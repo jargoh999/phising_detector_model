@@ -7,9 +7,9 @@ class PhishingDetector:
     def __init__(self):
         """Initialize the phishing detector with BERT model"""
         try:
-            # Load BERT model and tokenizer
-            self.model = AutoModelForSequenceClassification.from_pretrained("ealvaradob/bert-finetuned-phishing")
-            self.tokenizer = AutoTokenizer.from_pretrained("ealvaradob/bert-finetuned-phishing")
+            # Load BERT model and tokenizer from local files
+            self.model = AutoModelForSequenceClassification.from_pretrained("models/phishing_bert")
+            self.tokenizer = AutoTokenizer.from_pretrained("models/phishing_bert")
             print("Phishing detector model loaded successfully")
         except Exception as e:
             print(f"Error loading model: {str(e)}")
