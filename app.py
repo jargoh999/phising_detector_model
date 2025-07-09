@@ -1,6 +1,6 @@
 import streamlit as st
 import torch
-from transformers import RobertaTokenizerFast, RobertaForSequenceClassification
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import validators
 import re
 from urllib.parse import urlparse
@@ -21,8 +21,8 @@ def load_model():
         logger.info(f"Loading model: {model_name}")
         
         # Load tokenizer and model
-        tokenizer = RobertaTokenizerFast.from_pretrained(model_name)
-        model = RobertaForSequenceClassification.from_pretrained(model_name)
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForSequenceClassification.from_pretrained(model_name)
         
         logger.info("Model loaded successfully")
         return model, tokenizer
