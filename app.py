@@ -21,9 +21,6 @@ st.set_page_config(
 # Add custom CSS for better styling
 st.markdown("""
     <style>
-    .stApp {
-        background-color: #f5f5f5;
-    }
     .header {
         background-color: #004d99;
         color: white;
@@ -34,13 +31,11 @@ st.markdown("""
         background-color: #ffd700;
         padding: 15px;
         border-radius: 8px;
-        margin: 10px 0;
     }
     .success {
         background-color: #90ee90;
         padding: 15px;
         border-radius: 8px;
-        margin: 10px 0;
     }
     .threat-level {
         font-size: 20px;
