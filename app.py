@@ -1,215 +1,264 @@
 import streamlit as st
-from phishing_detector import PhishingDetector
-import time
-import pandas as pd
+import torch
+from transformers import RobertaTokenizerFast, RobertaForSequenceClassification
+import validators
+import re
+from urllib.parse import urlparse
 import logging
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()
-    ]
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Set page configuration first (required by Streamlit)
-st.set_page_config(
-    page_title="Healthcare Cybersecurity Analyzer",
-    page_icon="🏥",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# Set page config
+st.set_page_config(page_title="Phishing Detector", layout="wide")
 
-# Initialize detector with loading status
-@st.cache_resource(show_spinner="Initializing phishing detector...")
-def init_detector():
+@st.cache_resource(show_spinner="Loading ScamLLM model...")
+def load_model():
+    """Load the ScamLLM phishing detection model."""
     try:
-        logger.info("Starting detector initialization...")
-        detector = PhishingDetector()
-        logger.info("Detector initialized successfully")
-        return detector
+        model_name = "phishbot/ScamLLM"
+        logger.info(f"Loading model: {model_name}")
+        
+        # Load tokenizer and model
+        tokenizer = RobertaTokenizerFast.from_pretrained(model_name)
+        model = RobertaForSequenceClassification.from_pretrained(model_name)
+        
+        logger.info("Model loaded successfully")
+        return model, tokenizer
+        
     except Exception as e:
-        logger.error(f"Error initializing detector: {str(e)}")
+        logger.error(f"Error loading model: {str(e)}")
+        st.error(f"Failed to load model: {str(e)}")
         raise
 
-detector = init_detector()
+def predict(text, model, tokenizer):
+    """Predict whether text is phishing or safe."""
+    try:
+        logger.info(f"Analyzing text: {text[:50]}...")
+        
+        # Tokenize input
+        inputs = tokenizer(
+            text,
+            return_tensors="pt",
+            truncation=True,
+            max_length=512,
+            padding=True
+        )
+        
+        # Get prediction
+        with torch.no_grad():
+            outputs = model(**inputs)
+            predictions = torch.nn.functional.softmax(outputs.logits, dim=-1)
+            
+        # Get probabilities for each class
+        probs = predictions[0].tolist()
+        
+        # Since this model is trained on scam detection, we'll use the highest probability
+        # and map it to phishing/safe based on the class
+        max_prob = max(probs)
+        max_idx = probs.index(max_prob)
+        
+        # ScamLLM is trained on scam detection, so we'll map it to phishing/safe
+        if max_idx == 1:  # Assuming 1 is the scam/phishing class
+            return "Phishing", max_prob
+        else:
+            return "Safe", max_prob
+            
+    except Exception as e:
+        logger.error(f"Error during prediction: {str(e)}")
+        st.error(f"Error analyzing text: {str(e)}")
+        return None, 0.0
+
+def predict(text, model, tokenizer):
+    """Predict whether text is phishing or safe."""
+    try:
+        logger.info(f"Analyzing text: {text[:50]}...")
+        
+        # Tokenize input
+        inputs = tokenizer(
+            text,
+            return_tensors="pt",
+            truncation=True,
+            max_length=512,
+            padding=True
+        )
+        
+        # Get model predictions
+        with torch.no_grad():
+            outputs = model(**inputs)
+            
+        # Process outputs
+        logits = outputs.logits
+        probabilities = torch.nn.functional.softmax(logits, dim=1)
+        predicted_class = torch.argmax(probabilities).item()
+        confidence = torch.max(probabilities).item()
+        
+        logger.info(f"Prediction: {'Phishing' if predicted_class == 1 else 'Safe'} with confidence: {confidence:.2f}")
+        return "Phishing" if predicted_class == 1 else "Safe", confidence
+        
+    except Exception as e:
+        logger.error(f"Error during prediction: {str(e)}")
+        st.error(f"Error analyzing text: {str(e)}")
+        return None, 0.0
+    logits = outputs.logits
+    probabilities = torch.nn.functional.softmax(logits, dim=1)
+    predicted_class = torch.argmax(probabilities).item()
+    confidence = torch.max(probabilities).item()
+    return "Phishing" if predicted_class == 1 else "Safe", confidence
+
+def analyze_url(url):
+    """Analyze URL for basic phishing indicators."""
+    try:
+        # Basic URL validation
+        if not validators.url(url):
+            return False, "Invalid URL format"
+            
+        # Extract domain
+        parsed = urlparse(url)
+        domain = parsed.netloc
+        
+        # Basic checks for phishing indicators
+        if any(substr in domain.lower() for substr in ['login', 'verify', 'secure', 'update']):
+            return True, "Suspicious domain name"
+            
+        # Check for IP addresses instead of domain names
+        if re.match(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', domain):
+            return True, "Uses IP address instead of domain"
+            
+        return False, "No obvious phishing indicators"
+        
+    except Exception as e:
+        return False, f"Error analyzing URL: {str(e)}"
 
 def main():
-
-    # Main header
-    st.title("🏥 Healthcare Cybersecurity Analyzer")
+    """Main application function."""
+    st.title("🛡️ Phishing Detector")
     st.markdown("""
-    ## Protecting Healthcare Systems from Cyber Threats
-    
-    This tool helps healthcare organizations detect and prevent phishing attacks that target sensitive medical information.
-    Phishing attacks in healthcare can lead to:
-    - Theft of patient medical records
-    - Unauthorized access to healthcare systems
-    - Ransomware attacks on medical equipment
-    - Identity theft of healthcare professionals
-    
-    The AI model analyzes both URLs and text content to identify potential phishing attempts.
+    This tool helps detect phishing attempts in URLs and text content using AI.
+    Enter a URL or text below to analyze for potential phishing indicators.
     """)
-
+    
+    # Load model
+    with st.spinner("Loading phishing detection model..."):
+        model, tokenizer = load_model()
+    
     # Create tabs
-    tab1, tab2, tab3, tab4 = st.tabs(["📊 Overview", "🔍 URL Analysis", "📝 Text Analysis", "📚 Examples"])
-
-    # Overview Tab
+    tab1, tab2 = st.tabs(["URL Analysis", "Text Analysis"])
+    
     with tab1:
-        st.header("📊 Cybersecurity Overview")
-        
-        # Key statistics
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Phishing Attempts Detected", "3,456", "+12%")
-        with col2:
-            st.metric("Threats Prevented", "2,890", "+8%")
-        with col3:
-            st.metric("System Uptime", "99.99%", "+0.01%")
-
-        # Security tips
-        st.header("🛡️ Security Best Practices")
-        st.markdown("""
-        1. 🔐 Never share patient information via email
-        2. 🔍 Verify sender identity before responding
-        3. 📞 Contact IT immediately if suspicious
-        4. 🔒 Use strong, unique passwords
-        5. 🔄 Update software regularly
-        """)
-
-    # URL Analysis Tab
-    with tab2:
         st.header("🔍 URL Analysis")
-        st.write("""
-        Analyze suspicious URLs that may be targeting your healthcare system.
-        Common attack vectors:
-        - Fake login pages for EHR systems
-        - Malicious software downloads
-        - Credential harvesting sites
-        - Ransomware distribution
-        """)
-
-        url_input = st.text_input(
-            "Enter URL to analyze:",
-            "",
-            placeholder="https://example.com"
+        
+        # Example URLs
+        example_urls = {
+            "Safe Example": "https://www.paypal.com/myaccount/activity",
+            "Phishing Example": "https://secure-paypal-login.com/update-account",
+            "Suspicious Example": "http://192.168.1.100/paypal-login",
+            "Common Phishing Pattern": "https://paypal-security-verification.com/verify-account"
+        }
+        
+        # URL selection
+        url_type = st.selectbox(
+            "Select example URL or enter your own:",
+            ["Enter custom URL"] + list(example_urls.keys())
         )
+        
+        # Set URL input based on selection
+        if url_type != "Enter custom URL":
+            url_input = st.text_input(
+                "Enter URL to analyze:",
+                value=example_urls[url_type],
+                placeholder="https://example.com/login"
+            )
+        else:
+            url_input = st.text_input(
+                "Enter URL to analyze:",
+                placeholder="https://example.com/login"
+            )
         
         if st.button("Analyze URL"):
-            if url_input:
+            if url_input.strip():
                 with st.spinner("Analyzing URL..."):
-                    result = detector.predict(url_input)
-                    time.sleep(1)
+                    # Basic URL analysis
+                    url_result, url_message = analyze_url(url_input)
                     
-                # Show results
-                st.subheader("Analysis Results")
-                
-                if result['is_phishing']:
-                    st.error(f"⚠️ This URL is likely a phishing attempt with {result['confidence']*100:.2f}% confidence.")
-                    st.write("Potential risks:")
-                    st.write("- May steal patient data")
-                    st.write("- Could install malware")
-                    st.write("- May be part of a ransomware campaign")
-                else:
-                    st.success(f"✅ This URL appears to be safe with {result['confidence']*100:.2f}% confidence.")
-                    st.write("No known security risks detected")
-                
-                st.write(f"Prediction: {result['prediction']}")
-                st.write(f"Confidence: {result['confidence']*100:.2f}%")
+                    # Phishing model prediction
+                    prediction, confidence = predict(url_input, model, tokenizer)
+                    
+                    st.subheader("Analysis Results")
+                    if url_result:
+                        st.error(f"⚠️ {url_message}")
+                    else:
+                        st.success("✅ No obvious phishing indicators")
+                    
+                    if prediction == "Phishing":
+                        st.error(f"⚠️ {prediction} (Confidence: {confidence:.1%})")
+                        st.write("Potential risks:")
+                        st.write("- May request sensitive information")
+                        st.write("- Could contain malicious links")
+                    else:
+                        st.success(f"✅ {prediction} (Confidence: {confidence:.1%})")
+                        st.write("No known phishing indicators detected")
+                    
+                    # Simple progress bar for confidence
+                    st.progress(int(confidence * 100))
+                    
             else:
-                st.warning("Please enter a URL to analyze")
-
-    # Text Analysis Tab
-    with tab3:
+                st.warning("Please enter a URL to analyze.")
+    
+    with tab2:
         st.header("📝 Text Analysis")
-        st.write("""
-        Analyze suspicious emails or messages that may be targeting your healthcare system.
-        Common attack patterns:
-        - Fake patient records requests
-        - Urgent software updates
-        - Credential verification requests
-        - Emergency transfer requests
-        """)
-
-        text_input = st.text_area(
-            "Enter text to analyze:",
-            "",
-            height=200,
-            placeholder="Dear Dr. Smith, we need to update your credentials immediately..."
+        
+        # Example texts
+        example_texts = {
+            "Safe Example": "Dear customer, your account has been successfully updated. No further action is required.",
+            "Phishing Example": "Dear customer, your account has been compromised! Please verify your identity by clicking the link below:\nhttps://secure-login.example.com/update-account\nFailure to verify within 24 hours will result in account suspension.",
+            "Suspicious Example": "URGENT: Your password will expire in 24 hours. Click here to update immediately: https://192.168.1.1/change-password"
+        }
+        
+        # Text selection
+        text_type = st.selectbox(
+            "Select example text or enter your own:",
+            ["Enter custom text"] + list(example_texts.keys())
         )
+        
+        # Set text input based on selection
+        if text_type != "Enter custom text":
+            text_input = st.text_area(
+                "Enter text to analyze:",
+                value=example_texts[text_type],
+                height=300,
+                placeholder="Enter email content or text here..."
+            )
+        else:
+            text_input = st.text_area(
+                "Enter text to analyze:",
+                height=300,
+                placeholder="Enter email content or text here..."
+            )
         
         if st.button("Analyze Text"):
-            if text_input:
+            if text_input.strip():
                 with st.spinner("Analyzing text..."):
-                    result = detector.predict(text_input)
-                    time.sleep(1)
+                    prediction, confidence = predict(text_input, model, tokenizer)
                     
-                # Show results
-                st.subheader("Analysis Results")
-                
-                if result['is_phishing']:
-                    st.error(f"⚠️ This text contains phishing indicators with {result['confidence']*100:.2f}% confidence.")
-                    st.write("Potential risks:")
-                    st.write("- May request sensitive information")
-                    st.write("- Could contain malicious links")
-                    st.write("- May impersonate healthcare authority")
-                else:
-                    st.success(f"✅ This text appears to be safe with {result['confidence']*100:.2f}% confidence.")
-                    st.write("No known phishing indicators detected")
-                
-                st.write(f"Prediction: {result['prediction']}")
-                st.write(f"Confidence: {result['confidence']*100:.2f}%")
+                    st.subheader("Analysis Results")
+                    if prediction == "Phishing":
+                        st.error(f"⚠️ {prediction} (Confidence: {confidence:.1%})")
+                        st.write("Potential risks:")
+                        st.write("- May request sensitive information")
+                        st.write("- Could contain malicious links")
+                        st.write("- May ask for personal data")
+                        st.write("- May have suspicious attachments")
+                    else:
+                        st.success(f"✅ {prediction} (Confidence: {confidence:.1%})")
+                        st.write("No known phishing indicators detected")
+                    
+                    # Progress bar for confidence
+                    st.progress(int(confidence * 100))
+                    
             else:
-                st.warning("Please enter some text to analyze")
-
-    # Examples Tab
-    with tab4:
-        st.header("📚 Real-world Examples")
-        
-        # Example cases
-        examples = {
-            "Phishing": [
-                "Important: New software update required for medical equipment. Click here to download.",
-                "Emergency: Patient records need to be transferred immediately. Please provide login details."
-            ],
-            "Safe": [
-                "Scheduled maintenance for the EHR system from 10 PM to 2 AM tonight.",
-                "Reminder: Monthly security training session at 2 PM today.",
-                "Update: New patient privacy policy effective from next month.",
-                "Notification: Your password expires in 30 days."
-            ]
-        }
-
-        # Example selector
-        example_type = st.selectbox(
-            "Select example type:",
-            ["Phishing", "Safe"]
-        )
-
-        # Show examples
-        selected_example = st.selectbox(
-            "Select example:",
-            examples[example_type]
-        )
-
-        # Analyze example
-        if st.button("Analyze Example"):
-            with st.spinner("Analyzing example..."):
-                result = detector.predict(selected_example)
-                time.sleep(1)
-                
-            # Show results
-            st.subheader("Example Analysis")
-            
-            if result['is_phishing']:
-                st.error(f"⚠️ This example is detected as phishing with {result['confidence']*100:.2f}% confidence.")
-            else:
-                st.success(f"✅ This example is detected as safe with {result['confidence']*100:.2f}% confidence.")
-            
-            st.write(f"Prediction: {result['prediction']}")
-            st.write(f"Confidence: {result['confidence']*100:.2f}%")
+                st.warning("Please enter some text to analyze.")
 
 if __name__ == "__main__":
     main()
