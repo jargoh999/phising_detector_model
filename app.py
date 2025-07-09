@@ -22,18 +22,15 @@ st.set_page_config(
 st.markdown("""
     <style>
     .header {
-        background-color: #004d99;
         color: white;
         padding: 20px;
         border-radius: 10px;
     }
     .warning {
-        background-color: #ffd700;
         padding: 15px;
         border-radius: 8px;
     }
     .success {
-        background-color: #90ee90;
         padding: 15px;
         border-radius: 8px;
     }
@@ -224,122 +221,103 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
-# Create tabs
+# Main app
 model, tokenizer = load_model()
 
-# Create tabs
-with st.container():
-    st.markdown("""
-    <div style="background-color: #f0f0f0; padding: 20px; border-radius: 10px;">
-        <h3>Real-time Threat Analysis</h3>
-        <p>Enter email content or URLs to analyze potential cyber threats in healthcare communications.</p>
-    </div>
-    """, unsafe_allow_html=True)
+# Create two columns layout
+col1, col2 = st.columns(2)
 
-with st.container():
-    col1, col2 = st.columns(2)
+with col1:
+    st.header("Email Analysis")
     
-    with col1:
-        st.header("Email Analysis")
-        
-        # Example emails
-        example_emails = {
-            "Safe Example": "Dear patient, your appointment is confirmed for tomorrow at 10 AM. Please arrive 15 minutes early.",
-            "Phishing Example": "URGENT: Your medical records have been compromised! Click here to verify your identity: https://secure-medical-login.com/update-account",
-            "Suspicious Example": "Dear user, we noticed suspicious activity on your account. Please verify your password at: http://192.168.1.1/account-security"
-        }
-        
-        # Email selection
-        email_type = st.selectbox(
-            "Select example email or enter your own:",
-            ["Enter custom email"] + list(example_emails.keys())
+    # Example emails
+    example_emails = {
+        "Safe Example": "Dear patient, your appointment is confirmed for tomorrow at 10 AM. Please arrive 15 minutes early.",
+        "Phishing Example": "URGENT: Your medical records have been compromised! Click here to verify your identity: https://secure-medical-login.com/update-account",
+        "Suspicious Example": "Dear user, we noticed suspicious activity on your account. Please verify your password at: http://192.168.1.1/account-security"
+    }
+    
+    # Email selection
+    email_type = st.selectbox(
+        "Select example email or enter your own:",
+        ["Enter custom email"] + list(example_emails.keys())
+    )
+    
+    # Set email input based on selection
+    if email_type != "Enter custom email":
+        email_input = st.text_area(
+            "Enter email content to analyze:",
+            value=example_emails[email_type],
+            height=200,
+            placeholder="Enter email content here..."
         )
-        
-        # Set email input based on selection
-        if email_type != "Enter custom email":
-            email_input = st.text_area(
-                "Enter email content to analyze:",
-                value=example_emails[email_type],
-                height=200,
-                placeholder="Enter email content here..."
-            )
-        else:
-            email_input = st.text_area(
-                "Enter email content to analyze:",
-                height=200,
-                placeholder="Enter email content here..."
-            )
-        
-        if st.button("Analyze Email", key="email_button"):
-            if email_input.strip():
-                result, confidence = predict(email_input, model, tokenizer)
-                st.markdown(f"<div class='threat-level'>Threat Level: {result}</div>", unsafe_allow_html=True)
-                st.progress(confidence)
-                st.write(f"Confidence: {confidence:.2%}")
-            else:
-                st.warning("Please enter email content to analyze")
-    
-    with col2:
-        st.header("URL Analysis")
-        
-        # Example URLs
-        example_urls = {
-            "Safe Example": "https://www.mayoclinic.org/appointments",
-            "Phishing Example": "https://secure-mayoclinic-login.com/update-account",
-            "Suspicious Example": "http://192.168.1.100/medical-login",
-            "Common Phishing Pattern": "https://medical-security-verification.com/verify-account"
-        }
-        
-        # URL selection
-        url_type = st.selectbox(
-            "Select example URL or enter your own:",
-            ["Enter custom URL"] + list(example_urls.keys())
+    else:
+        email_input = st.text_area(
+            "Enter email content to analyze:",
+            height=200,
+            placeholder="Enter email content here..."
         )
-        
-        # Set URL input based on selection
-        if url_type != "Enter custom URL":
-            url_input = st.text_input(
-                "Enter URL to analyze:",
-                value=example_urls[url_type],
-                placeholder="https://example.com/login"
-            )
-        else:
-            url_input = st.text_input(
-                "Enter URL to analyze:",
-                placeholder="https://example.com/login"
-            )
-        
-        if st.button("Analyze URL", key="url_button"):
-            if url_input.strip():
-                result, confidence = predict(url_input, model, tokenizer)
-                st.markdown(f"<div class='threat-level'>Threat Level: {result}</div>", unsafe_allow_html=True)
-                st.progress(confidence)
-                st.write(f"Confidence: {confidence:.2%}")
-                    
-                if prediction == "Phishing":
-                    st.error(f"⚠️ {prediction} (Confidence: {confidence:.1%})")
-                    st.write("Potential risks:")
-                    st.write("- May request sensitive information")
-                    st.write("- Could contain malicious links")
-                else:
-                    st.success(f"✅ {prediction} (Confidence: {confidence:.1%})")
-                    st.write("No known phishing indicators detected")
-                
-                # Simple progress bar for confidence
-                st.progress(int(confidence * 100))
-                    
-            else:
-                st.warning("Please enter a URL to analyze.")
     
-    with tab2:
-        st.header("📝 Text Analysis")
-        
-        # Example texts
-        example_texts = {
-            "Safe Example": "Dear customer, your account has been successfully updated. No further action is required.",
-            "Phishing Example": "Dear customer, your account has been compromised! Please verify your identity by clicking the link below:\nhttps://secure-login.example.com/update-account\nFailure to verify within 24 hours will result in account suspension.",
-            "Suspicious Example": "URGENT: Your password will expire in 24 hours. Click here to update immediately: https://192.168.1.1/change-password"
-        }
+    if st.button("Analyze Email", key="email_button"):
+        if email_input.strip():
+            result, confidence = predict(email_input, model, tokenizer)
+            st.write(f"Threat Level: {result}")
+            st.progress(confidence)
+            st.write(f"Confidence: {confidence:.2%}")
+        else:
+            st.warning("Please enter email content to analyze")
+
+with col2:
+    st.header("URL Analysis")
+    
+    # Example URLs
+    example_urls = {
+        "Safe Example": "https://www.mayoclinic.org/appointments",
+        "Phishing Example": "https://secure-mayoclinic-login.com/update-account",
+        "Suspicious Example": "http://192.168.1.100/medical-login",
+        "Common Phishing Pattern": "https://medical-security-verification.com/verify-account"
+    }
+    
+    # URL selection
+    url_type = st.selectbox(
+        "Select example URL or enter your own:",
+        ["Enter custom URL"] + list(example_urls.keys())
+    )
+    
+    # Set URL input based on selection
+    if url_type != "Enter custom URL":
+        url_input = st.text_input(
+            "Enter URL to analyze:",
+            value=example_urls[url_type],
+            placeholder="https://example.com/login"
+        )
+    else:
+        url_input = st.text_input(
+            "Enter URL to analyze:",
+            placeholder="https://example.com/login"
+        )
+    
+    if st.button("Analyze URL", key="url_button"):
+        if url_input.strip():
+            result, confidence = predict(url_input, model, tokenizer)
+            st.write(f"Threat Level: {result}")
+            st.progress(confidence)
+            st.write(f"Confidence: {confidence:.2%}")
+            
+            if result == "Phishing":
+                st.error(f"⚠️ {result} (Confidence: {confidence:.1%})")
+                st.write("Potential risks:")
+                st.write("- May request sensitive information")
+                st.write("- Could contain malicious links")
+            else:
+                st.success(f"✅ {result} (Confidence: {confidence:.1%})")
+                st.write("No known phishing indicators detected")
+            
+            # Simple progress bar for confidence
+            st.progress(int(confidence * 100))
+            
+        else:
+            st.warning("Please enter a URL to analyze.")
         
         # Text selection
         text_type = st.selectbox(
