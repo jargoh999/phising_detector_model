@@ -278,6 +278,13 @@ with col2:
         "Common Phishing Pattern": "https://medical-security-verification.com/verify-account"
     }
     
+    # Example texts
+    example_texts = {
+        "Safe Example": "Dear customer, your account has been successfully updated. No further action is required.",
+        "Phishing Example": "Dear customer, your account has been compromised! Please verify your identity by clicking the link below:\nhttps://secure-login.example.com/update-account\nFailure to verify within 24 hours will result in account suspension.",
+        "Suspicious Example": "URGENT: Your password will expire in 24 hours. Click here to update immediately: https://192.168.1.1/change-password"
+    }
+    
     # URL selection
     url_type = st.selectbox(
         "Select example URL or enter your own:",
