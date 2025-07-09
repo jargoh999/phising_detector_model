@@ -2,18 +2,37 @@ import streamlit as st
 from phishing_detector import PhishingDetector
 import time
 import pandas as pd
+import logging
 
-# Set page configuration first
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# Set page configuration first (required by Streamlit)
 st.set_page_config(
     page_title="Healthcare Cybersecurity Analyzer",
     page_icon="🏥",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# Initialize detector
-@st.cache_resource
+# Initialize detector with loading status
+@st.cache_resource(show_spinner="Initializing phishing detector...")
 def init_detector():
-    return PhishingDetector()
+    try:
+        logger.info("Starting detector initialization...")
+        detector = PhishingDetector()
+        logger.info("Detector initialized successfully")
+        return detector
+    except Exception as e:
+        logger.error(f"Error initializing detector: {str(e)}")
+        raise
 
 detector = init_detector()
 

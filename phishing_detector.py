@@ -4,28 +4,48 @@ import numpy as np
 import re
 import os
 import logging
+import time
+import streamlit as st
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
 logger = logging.getLogger(__name__)
+
+# Cache the model loading with a custom cache key
+@st.cache_resource(show_spinner="Loading phishing detection model...")
+def load_model():
+    try:
+        start_time = time.time()
+        logger.info("Starting model loading...")
+        
+        # Load tokenizer first (it's smaller)
+        tokenizer = AutoTokenizer.from_pretrained("cybersectony/phishing-email-detection-distilbert_v2.4.1")
+        logger.info(f"Tokenizer loaded in {time.time() - start_time:.2f} seconds")
+        
+        # Load model
+        model = AutoModelForSequenceClassification.from_pretrained("cybersectony/phishing-email-detection-distilbert_v2.4.1")
+        logger.info(f"Model loaded in {time.time() - start_time:.2f} seconds")
+        
+        return model, tokenizer
+    except Exception as e:
+        logger.error(f"Error loading model: {str(e)}")
+        raise
 
 class PhishingDetector:
     def __init__(self):
         """Initialize the phishing detector with DistilBERT model"""
         try:
-            # Load DistilBERT model and tokenizer from Hugging Face
-            logger.info("Starting to load phishing detection model...")
-            logger.info("Loading model from Hugging Face...")
-            self.model = AutoModelForSequenceClassification.from_pretrained("cybersectony/phishing-email-detection-distilbert_v2.4.1")
-            logger.info("Model loaded successfully")
-            
-            logger.info("Loading tokenizer from Hugging Face...")
-            self.tokenizer = AutoTokenizer.from_pretrained("cybersectony/phishing-email-detection-distilbert_v2.4.1")
-            logger.info("Tokenizer loaded successfully")
-            
+            # Load model and tokenizer from cache
+            self.model, self.tokenizer = load_model()
             logger.info("Phishing detector initialized successfully")
         except Exception as e:
-            logger.error(f"Error loading model: {str(e)}")
+            logger.error(f"Error initializing detector: {str(e)}")
             raise
 
     def _clean_text(self, text):
