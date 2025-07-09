@@ -5,17 +5,103 @@ import validators
 import re
 from urllib.parse import urlparse
 import logging
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Set page config
-st.set_page_config(page_title="Phishing Detector", layout="wide")
+st.set_page_config(
+    page_title="Healthcare Cybersecurity Analyzer",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-@st.cache_resource(show_spinner="Loading ScamLLM model...")
+# Add custom CSS for better styling
+st.markdown("""
+    <style>
+    .stApp {
+        background-color: #f5f5f5;
+    }
+    .header {
+        background-color: #004d99;
+        color: white;
+        padding: 20px;
+        border-radius: 10px;
+    }
+    .warning {
+        background-color: #ffd700;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 10px 0;
+    }
+    .success {
+        background-color: #90ee90;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 10px 0;
+    }
+    .threat-level {
+        font-size: 20px;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# Sidebar with healthcare cybersecurity information
+with st.sidebar:
+    st.markdown("""
+    <div class="header">
+        <h2>Healthcare Cybersecurity Dashboard</h2>
+        <p>Powered by AI/ML Threat Detection</p>
+    </div>
+    
+    <div class="warning">
+        <h3>Healthcare Cybersecurity Challenges</h3>
+        <ul>
+            <li>Data quality and availability</li>
+            <li>Model transparency</li>
+            <li>Regulatory compliance (GDPR, HIPAA)</li>
+            <li>Technical expertise limitations</li>
+        </ul>
+    </div>
+    
+    <div class="success">
+        <h3>AI/ML Benefits</h3>
+        <ul>
+            <li>Real-time threat detection</li>
+            <li>Pattern recognition</li>
+            <li>Automated response capabilities</li>
+            <li>Continuous learning</li>
+        </ul>
+    </div>
+    
+    <div class="info">
+        <h3>Best Practices</h3>
+        <ul>
+            <li>Regular security audits</li>
+            <li>Employee training</li>
+            <li>Multi-factor authentication</li>
+            <li>Regular updates</li>
+        </ul>
+    </div>
+    
+    <div class="footer">
+        <p>Powered by AI/ML</p>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown("""
+    <h4>Important Notice</h4>
+    <p>This tool is designed to assist healthcare organizations in detecting potential cyber threats.
+       It uses AI/ML models to analyze emails and URLs for phishing attempts.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+@st.cache_resource(show_spinner="Loading AI Threat Detection Model...")
 def load_model():
-    """Load the ScamLLM phishing detection model."""
+    """Load the AI threat detection model."""
     try:
         model_name = "phishbot/ScamLLM"
         logger.info(f"Loading model: {model_name}")
@@ -131,30 +217,82 @@ def analyze_url(url):
     except Exception as e:
         return False, f"Error analyzing URL: {str(e)}"
 
-def main():
-    """Main application function."""
-    st.title("🛡️ Phishing Detector")
+# Main app
+st.title("Healthcare Cybersecurity Analyzer")
+
+# Add a banner with healthcare cybersecurity information
+st.markdown("""
+    <div style="background-color: #004d99; color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+        <h2>Healthcare Cybersecurity Dashboard</h2>
+        <p>Advanced AI/ML Threat Detection for Healthcare Organizations</p>
+        <p>Real-time analysis of potential cyber threats in healthcare communications</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Create tabs
+model, tokenizer = load_model()
+
+# Create tabs
+with st.container():
     st.markdown("""
-    This tool helps detect phishing attempts in URLs and text content using AI.
-    Enter a URL or text below to analyze for potential phishing indicators.
-    """)
+    <div style="background-color: #f0f0f0; padding: 20px; border-radius: 10px;">
+        <h3>Real-time Threat Analysis</h3>
+        <p>Enter email content or URLs to analyze potential cyber threats in healthcare communications.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+with st.container():
+    col1, col2 = st.columns(2)
     
-    # Load model
-    with st.spinner("Loading phishing detection model..."):
-        model, tokenizer = load_model()
+    with col1:
+        st.header("Email Analysis")
+        
+        # Example emails
+        example_emails = {
+            "Safe Example": "Dear patient, your appointment is confirmed for tomorrow at 10 AM. Please arrive 15 minutes early.",
+            "Phishing Example": "URGENT: Your medical records have been compromised! Click here to verify your identity: https://secure-medical-login.com/update-account",
+            "Suspicious Example": "Dear user, we noticed suspicious activity on your account. Please verify your password at: http://192.168.1.1/account-security"
+        }
+        
+        # Email selection
+        email_type = st.selectbox(
+            "Select example email or enter your own:",
+            ["Enter custom email"] + list(example_emails.keys())
+        )
+        
+        # Set email input based on selection
+        if email_type != "Enter custom email":
+            email_input = st.text_area(
+                "Enter email content to analyze:",
+                value=example_emails[email_type],
+                height=200,
+                placeholder="Enter email content here..."
+            )
+        else:
+            email_input = st.text_area(
+                "Enter email content to analyze:",
+                height=200,
+                placeholder="Enter email content here..."
+            )
+        
+        if st.button("Analyze Email", key="email_button"):
+            if email_input.strip():
+                result, confidence = predict(email_input, model, tokenizer)
+                st.markdown(f"<div class='threat-level'>Threat Level: {result}</div>", unsafe_allow_html=True)
+                st.progress(confidence)
+                st.write(f"Confidence: {confidence:.2%}")
+            else:
+                st.warning("Please enter email content to analyze")
     
-    # Create tabs
-    tab1, tab2 = st.tabs(["URL Analysis", "Text Analysis"])
-    
-    with tab1:
-        st.header("🔍 URL Analysis")
+    with col2:
+        st.header("URL Analysis")
         
         # Example URLs
         example_urls = {
-            "Safe Example": "https://www.paypal.com/myaccount/activity",
-            "Phishing Example": "https://secure-paypal-login.com/update-account",
-            "Suspicious Example": "http://192.168.1.100/paypal-login",
-            "Common Phishing Pattern": "https://paypal-security-verification.com/verify-account"
+            "Safe Example": "https://www.mayoclinic.org/appointments",
+            "Phishing Example": "https://secure-mayoclinic-login.com/update-account",
+            "Suspicious Example": "http://192.168.1.100/medical-login",
+            "Common Phishing Pattern": "https://medical-security-verification.com/verify-account"
         }
         
         # URL selection
@@ -176,32 +314,24 @@ def main():
                 placeholder="https://example.com/login"
             )
         
-        if st.button("Analyze URL"):
+        if st.button("Analyze URL", key="url_button"):
             if url_input.strip():
-                with st.spinner("Analyzing URL..."):
-                    # Basic URL analysis
-                    url_result, url_message = analyze_url(url_input)
+                result, confidence = predict(url_input, model, tokenizer)
+                st.markdown(f"<div class='threat-level'>Threat Level: {result}</div>", unsafe_allow_html=True)
+                st.progress(confidence)
+                st.write(f"Confidence: {confidence:.2%}")
                     
-                    # Phishing model prediction
-                    prediction, confidence = predict(url_input, model, tokenizer)
-                    
-                    st.subheader("Analysis Results")
-                    if url_result:
-                        st.error(f"⚠️ {url_message}")
-                    else:
-                        st.success("✅ No obvious phishing indicators")
-                    
-                    if prediction == "Phishing":
-                        st.error(f"⚠️ {prediction} (Confidence: {confidence:.1%})")
-                        st.write("Potential risks:")
-                        st.write("- May request sensitive information")
-                        st.write("- Could contain malicious links")
-                    else:
-                        st.success(f"✅ {prediction} (Confidence: {confidence:.1%})")
-                        st.write("No known phishing indicators detected")
-                    
-                    # Simple progress bar for confidence
-                    st.progress(int(confidence * 100))
+                if prediction == "Phishing":
+                    st.error(f"⚠️ {prediction} (Confidence: {confidence:.1%})")
+                    st.write("Potential risks:")
+                    st.write("- May request sensitive information")
+                    st.write("- Could contain malicious links")
+                else:
+                    st.success(f"✅ {prediction} (Confidence: {confidence:.1%})")
+                    st.write("No known phishing indicators detected")
+                
+                # Simple progress bar for confidence
+                st.progress(int(confidence * 100))
                     
             else:
                 st.warning("Please enter a URL to analyze.")
