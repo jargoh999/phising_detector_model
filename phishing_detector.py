@@ -11,15 +11,16 @@ logger = logging.getLogger(__name__)
 
 class PhishingDetector:
     def __init__(self):
-        """Initialize the phishing detector with BERT model"""
+        """Initialize the phishing detector with DistilBERT model"""
         try:
+            # Load DistilBERT model and tokenizer from Hugging Face
             logger.info("Starting to load phishing detection model...")
             logger.info("Loading model from Hugging Face...")
-            self.model = AutoModelForSequenceClassification.from_pretrained("ealvaradob/bert-finetuned-phishing")
+            self.model = AutoModelForSequenceClassification.from_pretrained("cybersectony/phishing-email-detection-distilbert_v2.4.1")
             logger.info("Model loaded successfully")
             
             logger.info("Loading tokenizer from Hugging Face...")
-            self.tokenizer = AutoTokenizer.from_pretrained("ealvaradob/bert-finetuned-phishing")
+            self.tokenizer = AutoTokenizer.from_pretrained("cybersectony/phishing-email-detection-distilbert_v2.4.1")
             logger.info("Tokenizer loaded successfully")
             
             logger.info("Phishing detector initialized successfully")
