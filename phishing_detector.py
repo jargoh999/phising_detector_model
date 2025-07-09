@@ -2,17 +2,29 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 import torch
 import numpy as np
 import re
+import os
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class PhishingDetector:
     def __init__(self):
         """Initialize the phishing detector with BERT model"""
         try:
-            # Load BERT model and tokenizer from local files
-            self.model = AutoModelForSequenceClassification.from_pretrained("models/phishing_bert")
-            self.tokenizer = AutoTokenizer.from_pretrained("models/phishing_bert")
-            print("Phishing detector model loaded successfully")
+            logger.info("Starting to load phishing detection model...")
+            logger.info("Loading model from Hugging Face...")
+            self.model = AutoModelForSequenceClassification.from_pretrained("ealvaradob/bert-finetuned-phishing")
+            logger.info("Model loaded successfully")
+            
+            logger.info("Loading tokenizer from Hugging Face...")
+            self.tokenizer = AutoTokenizer.from_pretrained("ealvaradob/bert-finetuned-phishing")
+            logger.info("Tokenizer loaded successfully")
+            
+            logger.info("Phishing detector initialized successfully")
         except Exception as e:
-            print(f"Error loading model: {str(e)}")
+            logger.error(f"Error loading model: {str(e)}")
             raise
 
     def _clean_text(self, text):

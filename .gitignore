@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+env/
+.venv/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+coverage.xml
+*.cover
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# Model files (these will be downloaded on deployment)
+models/
+__pycache__/
+*.pytest_cache/
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.dll
+*.dylib
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+*.log
+*.py[cod]
+*$py.class

@@ -152,8 +152,6 @@ def main():
         # Example cases
         examples = {
             "Phishing": [
-                "Dear Dr. Smith, we need to update your credentials immediately to access patient records.",
-                "Urgent: Your EHR system access will be suspended unless you verify your credentials.",
                 "Important: New software update required for medical equipment. Click here to download.",
                 "Emergency: Patient records need to be transferred immediately. Please provide login details."
             ],
